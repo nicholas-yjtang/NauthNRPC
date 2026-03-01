@@ -194,6 +194,7 @@ class NAuthNRPC:
                     for ssubkey, ssubvalue in subvalue.items():
                         if not bool(ssubvalue):
                             ssubvalue = "Not Available"
+                        ssubvalue = ssubvalue.replace('\x00', '')
                         print(f"    \u2022 {ssubkey}: {ssubvalue}")
             else:
                 if not domain_info_printed:
@@ -201,6 +202,7 @@ class NAuthNRPC:
                     domain_info_printed = True
                     if not bool(value):
                         value = "Not Available"
+                value = value.replace('\x00', '')
                 print(f"[*] {key}: {value}")
 
     def domain_user_enumerator(self, username):
