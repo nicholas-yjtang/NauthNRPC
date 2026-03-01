@@ -67,20 +67,20 @@ class NAuthNRPC:
         self.verbose = verbose
         self.address = ip
         if users_file is not None:
+            self.users_file = users_file
             try:
-                with open(usersfile, 'r') as users:
-                    self.users = [username.strip() for username in users.readlines()]
+                open(self.users_file, 'r').close()
             except Exception as e:
-                print(f"Couldn't open users file {usersfile}: {e} ")
+                print(f"Couldn't open users file {users_file}: {e}")
                 sys.exit(1)
         else:
-            self.users = None
+            self.users_file = None
         if computers_file is not None:
             try:
-                with open(computersfile, 'r') as computers:
+                with open(computers_file, 'r') as computers:
                     self.computers = [computer.strip() for computer in computers.readlines()]
             except Exception as e:
-                print(f"Couldn't open computers file {computersfile}: {e}")
+                print(f"Couldn't open computers file {computers_file}: {e}")
                 sys.exit(1)
         else:
             self.computers = None
@@ -208,6 +208,22 @@ class NAuthNRPC:
                         value = "Not Available"
                 print(f"[*] {key}: {value}")
 
+    def domain_user_enumerator(self, username):
+        if self.domain_info_flag:
+            response = hDsrGetDcNameEx2(self.dce,
+                self.output['DC Name'].split(".")[0],
+                username, 0x200, self.output["Domain Name"],
+                string_to_bin(self.output["Domain GUID"]),
+                self.output["DC Site Name"],
+                0x40020200)
+        else:
+            response = hDsrGetDcNameEx2(self.dce, NULL, username, 0x200, NULL, NULL, NULL, 0)
+
+        if response is not None and response["ErrorCode"] == 0:
+            print(f"[+] user {username} exists.")
+        elif self.verbose:
+            print(f"[-] user {username} does not exist")
+
     def domain_users_enumerator(self):
         """
         Main function used for user enumeration. If we already have domain info, 
@@ -215,21 +231,14 @@ class NAuthNRPC:
         work with NULL values for almost all its parameters.
         """
         print("\n[*] User Accounts Enumeration\n" + "-" * 30)
-        for username in self.users:
-            if self.domain_info_flag:
-                response = hDsrGetDcNameEx2(self.dce,
-                                            self.output['DC Name'].split(".")[0],
-                                            username, 0x200, self.output["Domain Name"],
-                                            string_to_bin(self.output["Domain GUID"]),
-                                            self.output["DC Site Name"],
-                                            0x40020200)
-            else:
-                response = hDsrGetDcNameEx2(self.dce, NULL, username, 0x200, NULL, NULL, NULL, 0)
-
-            if response is not None and response["ErrorCode"] == 0:
-                print(f"[+] user {username} exists.")
-            elif self.verbose:
-                print(f"[-] user {username} does not exist")
+        if self.users_file is not None:
+            try:
+                with open(self.users_file, 'r') as users:
+                    for username in users.readlines():
+                        self.domain_user_enumerator(username.strip())
+            except Exception as e:
+                print(f"Couldn't open users file {self.users_file}: {e} ")
+                sys.exit(1)
 
     def computer_accounts_enumerator(self):
         """
@@ -285,7 +294,7 @@ class NAuthNRPC:
             print(f"Couldn't parse domain information: {e}")
 
         try:
-            if self.users is not None:
+            if self.users_file is not None:
                 self.rpc_connector()
                 self.domain_users_enumerator()
                 self.dce.disconnect()
