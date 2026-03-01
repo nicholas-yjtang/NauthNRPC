@@ -68,11 +68,6 @@ class NAuthNRPC:
         self.address = ip
         if users_file is not None:
             self.users_file = users_file
-            try:
-                open(self.users_file, 'r').close()
-            except Exception as e:
-                print(f"Couldn't open users file {users_file}: {e}")
-                sys.exit(1)
         else:
             self.users_file = None
         if computers_file is not None:
@@ -220,7 +215,7 @@ class NAuthNRPC:
             response = hDsrGetDcNameEx2(self.dce, NULL, username, 0x200, NULL, NULL, NULL, 0)
 
         if response is not None and response["ErrorCode"] == 0:
-            print(f"[+] user {username} exists.")
+            print(f"[+] user {username} exists.", flush=True)
         elif self.verbose:
             print(f"[-] user {username} does not exist")
 
@@ -234,7 +229,7 @@ class NAuthNRPC:
         if self.users_file is not None:
             try:
                 with open(self.users_file, 'r') as users:
-                    for username in users.readlines():
+                    for username in users:
                         self.domain_user_enumerator(username.strip())
             except Exception as e:
                 print(f"Couldn't open users file {self.users_file}: {e} ")
